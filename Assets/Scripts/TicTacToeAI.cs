@@ -98,7 +98,7 @@ public class TicTacToeAI : MonoBehaviour
 
 	/*==================== THE PLAYER FUNCTIONS ====================*/
 	// Function to select a square for the player
-    public void PlayerSelects(int coordX, int coordY){
+    public async void PlayerSelects(int coordX, int coordY){
         if (_isPlayerTurn){
             // Update the board state
             boardState[coordX, coordY] = playerState;
@@ -113,11 +113,13 @@ public class TicTacToeAI : MonoBehaviour
             // Check for win
 			// 0 for human
             if (CheckForWin(playerState)){
+				await Task.Delay(500);
                 onPlayerWin.Invoke(0); 
                 Debug.Log("Player won!");
             }
 			// -1 for a tie
             else if (!EmptySquaresExist()){
+				await Task.Delay(500);
                 onPlayerWin.Invoke(-1);
             }
             else{
@@ -128,12 +130,22 @@ public class TicTacToeAI : MonoBehaviour
 
 	/*==================== THE AI FUNCTIONS ====================*/
 	// Logic: The AI will select a random square
-	private void EasyAI()
-    {
-        List<int> moves = GetAvailableMoves();
-        int square = moves[UnityEngine.Random.Range(0, moves.Count)];
-        AiSelects(square / _gridSize, square % _gridSize);
-    }
+	private void EasyAI() 
+	{
+		List<int> moves = GetAvailableMoves();
+		
+		// 50% (exclusive) chance to make a random move
+		if (UnityEngine.Random.value < 0.5f) {
+			int index = UnityEngine.Random.Range(0, moves.Count);
+			int square = moves[index];
+			AiSelects(square / _gridSize, square % _gridSize);
+		}
+
+		// 50% (inclusive) chance to make a strategic move
+		else {
+			MakeStrategicMove(); 
+		}
+	}
 
 	// Returns a list of valid moves 
 	public List<int> GetAvailableMoves()
@@ -168,11 +180,47 @@ public class TicTacToeAI : MonoBehaviour
         _isPlayerTurn = true;
 
         if (CheckForWin(aiState)){
+			await Task.Delay(500);
             onPlayerWin.Invoke(1);
         }
         else if (!EmptySquaresExist()){
+			await Task.Delay(500);
             onPlayerWin.Invoke(-1);
         }
+	}
+
+	// Function to make a strategic move
+	private void MakeStrategicMove()
+	{
+		// Check if the AI can win in the next move
+		List<int> moves = GetAvailableMoves();
+		foreach (int move in moves) {
+			int row = move / _gridSize;
+			int col = move % _gridSize;
+			boardState[row, col] = aiState;
+			if (CheckForWin(aiState)) {
+				AiSelects(row, col);
+				return;
+			}
+			boardState[row, col] = TicTacToeState.none;
+		}
+
+		// Check if the player can be blocked in next move
+		foreach (int move in moves) {
+			int row = move / _gridSize;
+			int col = move % _gridSize;
+			boardState[row, col] = playerState;
+			if (CheckForWin(playerState)) {
+				AiSelects(row, col);
+				return;
+			}
+			boardState[row, col] = TicTacToeState.none;
+		}
+
+		// Otherwise make a random move
+		int index = UnityEngine.Random.Range(0, moves.Count);
+		int square = moves[index];
+		AiSelects(square / _gridSize, square % _gridSize);
 	}
 
 	/*==================== GAME FUNCTIONS ====================*/
